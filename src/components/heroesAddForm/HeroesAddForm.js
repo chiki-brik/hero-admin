@@ -1,39 +1,29 @@
-// Задача для этого компонента:
-// Реализовать создание нового героя с введенными данными. Он должен попадать
-// в общее состояние и отображаться в списке + фильтроваться
-// Уникальный идентификатор персонажа можно сгенерировать через uiid
-// Усложненная задача:
-// Персонаж создается и в файле json при помощи метода POST
-// Дополнительно:
-// Элементы <option></option> желательно сформировать на базе
-// данных из фильтров
-
-import {useHttp} from '../../hooks/http.hook';
+// import {useHttp} from '../../hooks/http.hook';
 import { useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux'; // useDispatch
 import { v4 as uuidv4 } from 'uuid';
-
-import { heroCreated } from '../heroesList/heroesSlice';
+// import { heroCreated } from '../heroesList/heroesSlice';
 import { selectAll } from '../heroesFilters/filtresSlice';
 import store from '../../store';
 
+import { useCreateHeroMutation } from '../../api/apiSlice';
+
 const HeroesAddForm = () => {
-    // Состояния для контроля формы
     const [heroName, setHeroName] = useState('');
     const [heroDescr, setHeroDescr] = useState('');
     const [heroElement, setHeroElement] = useState('');
 
     const {filtersLoadingStatus} = useSelector(state => state.filters);
-    //const filters = useSelector(selectAll);
     const filters = selectAll(store.getState());
-    const dispatch = useDispatch();
-    const {request} = useHttp();
+    // const dispatch = useDispatch();
+    // const {request} = useHttp();
+
+    const [createHero, {isLoading}] = useCreateHeroMutation(); // возвращает массив из двух данных
+    // 1й элемент массива - функция, которая будет вызывать мутацию
+    // 2й - объект с данными о состоянии запроса
 
     const onSubmitHandler = (e) => {
         e.preventDefault();
-        // Можно сделать и одинаковые названия состояний,
-        // хотел показать вам чуть нагляднее
-        // Генерация id через библиотеку
         const newHero = {
             id: uuidv4(),
             name: heroName,
@@ -41,14 +31,12 @@ const HeroesAddForm = () => {
             element: heroElement
         }
 
-        // Отправляем данные на сервер в формате JSON
-        // ТОЛЬКО если запрос успешен - отправляем персонажа в store
-        request("http://localhost:3001/heroes", "POST", JSON.stringify(newHero))
-            //.then(res => console.log(res, 'Отправка успешна'))
-            .then(dispatch(heroCreated(newHero)))
-            .catch(err => console.log(err));
+        // request("http://localhost:3001/heroes", "POST", JSON.stringify(newHero))
+        //     .then(dispatch(heroCreated(newHero)))
+        //     .catch(err => console.log(err));
 
-        // Очищаем форму после отправки
+        createHero(newHero).unwrap(); // тут обязательно нужно вызвать unwrap, чтобы все сущности, которые есть во втором элементе возвращаемого хуком массива верно отрабатывали
+
         setHeroName('');
         setHeroDescr('');
         setHeroElement('');
@@ -60,12 +48,9 @@ const HeroesAddForm = () => {
         } else if (status === "error") {
             return <option>Ошибка загрузки</option>
         }
-        
-        // Если фильтры есть, то рендерим их
+
         if (filters && filters.length > 0 ) {
             return filters.map(({name, label}) => {
-                // Один из фильтров нам тут не нужен
-                // eslint-disable-next-line
                 if (name === 'all')  return;
 
                 return <option key={name} value={name}>{label}</option>
@@ -121,152 +106,3 @@ const HeroesAddForm = () => {
 }
 
 export default HeroesAddForm;
-
-// import { useState, useEffect } from "react";
-// import { useSelector, useDispatch } from "react-redux";
-// import { heroesFetchingError, heroAdd, filtersFetching, filtersFetched, filtersFetchingError } from "../../actions";
-// import { useHttp } from "../../hooks/http.hook";
-// import { v4 as uuidv4 } from 'uuid';
-// import Spinner from "../spinner/Spinner";
-// // Задача для этого компонента:
-// // Реализовать создание нового героя с введенными данными. Он должен попадать
-// // в общее состояние и отображаться в списке + фильтроваться
-// // Уникальный идентификатор персонажа можно сгенерировать через uiid
-// // Усложненная задача:
-// // Персонаж создается и в файле json при помощи метода POST
-// // Дополнительно:
-// // Элементы <option></option> желательно сформировать на базе
-// // данных из фильтров
-
-// const HeroesAddForm = () => {
-//     // const [newHero, setNewHero] = useState({
-//     //     "id": 0,
-//     //     "name": "",
-//     //     "description": "",
-//     //     "element": ""
-//     // });
-//     const [newName, setNewName] = useState('');
-//     const [newDescription, setNewDescription] = useState('');
-//     const [newElement, setNewElement] = useState('');
-//     const newId = uuidv4();
-
-//     const heroes = useSelector(state => state.heroes);
-//     const filtersLoadingStatus = useSelector(state => state.filtersLoadingStatus);
-//     const filters = useSelector(state => state.filters);
-// 	const dispatch = useDispatch();
-// 	const {addItem, requestFilters} = useHttp();
-
-//     useEffect(() => {
-//         dispatch(filtersFetching());
-//         requestFilters("http://localhost:3001/filters")
-//             .then(data => dispatch(filtersFetched(data)))
-//             .catch(() => dispatch(filtersFetchingError()))
-
-//         // eslint-disable-next-line
-//     }, []);
-
-//     // const selectList = () => {
-//     //     if (filtersLoadingStatus === "loading") {
-//     //         return <Spinner/>;
-//     //     } else if (filtersLoadingStatus === "error") {
-//     //         return <h5 className="text-center mt-5">Ошибка загрузки списка</h5>
-//     //     } else return <></>;
-//     // }
-
-//     const onChangeName = (e) => {
-//         setNewName(e.target.value);
-//     }
-
-//     const onChangeDescription = (e) => {
-//         setNewDescription(e.target.value);
-//     }
-
-//     const onChangeElement = (e) => {
-//         setNewElement(e.target.value);
-//     }
-
-//     const onSubNewHero = (e) => {
-//         e.preventDefault();
-//         addItem('http://localhost:3001/heroes', 'POST', JSON.stringify({
-//             "id": newId,
-//             "name": newName,
-//             "description": newDescription,
-//             "element": newElement
-//         }))
-//             .then(() => {
-//                 dispatch(heroAdd([...heroes, {
-//                     "id": newId,
-//                     "name": newName,
-//                     "description": newDescription,
-//                     "element": newElement
-//                 }]));
-//                 setNewName('');
-//                 setNewDescription('');
-//                 setNewElement('');
-//             })
-//             .catch(() => dispatch(heroesFetchingError()));
-//     }
-
-//     const receiveFilters = () => {
-//         return filters.filter(item => item.name !== 'all').map((item, i) => <option key={i} value={item.name}>{item.label}</option>)
-//     }
-
-//     const selectFilters = receiveFilters();
-
-//     return (
-//         <form className="border p-4 shadow-lg rounded">
-//             <div className="mb-3">
-//                 <label htmlFor="name" className="form-label fs-4">Имя нового героя</label>
-//                 <input 
-//                     required
-//                     value={newName}
-//                     onChange={onChangeName}
-//                     type="text" 
-//                     name="name" 
-//                     className="form-control" 
-//                     id="name" 
-//                     placeholder="Как меня зовут?"/>
-//             </div>
-
-//             <div className="mb-3">
-//                 <label htmlFor="text" className="form-label fs-4">Описание</label>
-//                 <textarea
-//                     required
-//                     value={newDescription}
-//                     onChange={onChangeDescription}
-//                     name="text" 
-//                     className="form-control" 
-//                     id="text" 
-//                     placeholder="Что я умею?"
-//                     style={{"height": '130px'}}/>
-//             </div>
-
-//             <div className="mb-3">
-//             {filtersLoadingStatus === 'idle' ?
-//                 <>
-//                     <label htmlFor="element" className="form-label">Выбрать элемент героя</label>
-//                     <select 
-//                         required
-//                         value={newElement}
-//                         onChange={onChangeElement}
-//                         className="form-select" 
-//                         id="element" 
-//                         name="element">
-//                         <option >Я владею элементом...</option>
-//                         {selectFilters}
-//                         {/* <option value="fire">Огонь</option>
-//                         <option value="water">Вода</option>
-//                         <option value="wind">Ветер</option>
-//                         <option value="earth">Земля</option> */}
-//                     </select>
-//                 </> : filtersLoadingStatus === "loading" ? 
-//                         <Spinner/> : <h5 className="text-center mt-5">Ошибка загрузки списка</h5>
-//                 }
-//             </div>
-
-//             <button onClick={onSubNewHero} type="submit" className="btn btn-primary">Создать</button>
-//         </form>
-//     )
-// }
-
-// export default HeroesAddForm;

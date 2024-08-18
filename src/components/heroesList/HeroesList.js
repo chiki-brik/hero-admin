@@ -1,53 +1,65 @@
-import {useHttp} from '../../hooks/http.hook';
-import { useEffect, useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+// import {useHttp} from '../../hooks/http.hook';
+import { useCallback, useMemo } from 'react'; // useEffect
+import { useSelector } from 'react-redux'; // useDispatch
 import { CSSTransition, TransitionGroup} from 'react-transition-group';
-//import {createSelector} from '@reduxjs/toolkit';
-
-import { heroDeleted, fetchHeroes, filteredHeroesSelector } from './heroesSlice'; // selectAll
 import HeroesListItem from "../heroesListItem/HeroesListItem";
 import Spinner from '../spinner/Spinner';
-
 import './heroesList.scss';
+
+// import { heroDeleted, fetchHeroes } from './heroesSlice'; // filteredHeroesSelector
+import { useGetHeroesQuery, useDeleteHeroMutation } from '../../api/apiSlice'; // хук, который будет работать с нашими героями
+// этот хук служит для генерации большого количества различных свойств, которые мы можем использовать
 
 const HeroesList = () => {
 
-    // const filteredHeroesSelector = createSelector( // хорошим тоном будет создание селектора в одном месте и потом экспорт его в нужные места
-    //     (state) => state.filters.activeFilter, 
-    //     //(state) => state.heroes.heroes, // state.heroes.entities // тут будет объект возвращен, а не массив. Чтобы как раньше был объект, нам нужно воспользоваться встроенными селекторами 
-    //     selectAll, // так же вернет массив с данными/ с героями, который нам нужен
-    //     (filter, heroes) => {  //  heroes будет получаться из функции selectAll
-    //         console.log(heroes);
-    //         if (filter === 'all') {
-    //             return heroes;
-    //         } else {
-    //             return heroes.filter(item => item.element === filter)
-    //         }
-    //     }
-    // );
+    // это на самом деле асинхронный код
+    const { // объект, который мы получаем из нашего хука
+        data: heroes = [], // данные, которые были получены(data) мы запишем в переменную heroes. Поставили сюда знаечние по-умолчанию, чтобы пока данные не получены не было ошибки
+        // состояния
+        // isFetching, // когда просто обращаемся к серверу(не первое обращение, последующие)
+        isLoading, // в первый раз обращаемся к серверу для получения данных
+        // isSuccess, // когда данные с успехом загрузились
+        isError,
+        // error
+        // еще параметры isUninitialized + refetch
+    } = useGetHeroesQuery(); // просто вызвали хук в теле функционального компонента. без использования useEffect. Весь жизненный цикл уже зашит внутрь этого функционала. Запрос будет выполняться после mount компонента
 
-    const filteredHeroes = useSelector(filteredHeroesSelector);
-    const heroesLoadingStatus = useSelector(state => state.heroes.heroesLoadingStatus);
-    const dispatch = useDispatch();
-    const {request} = useHttp();
+    const [deleteHero] = useDeleteHeroMutation();
 
-    useEffect(() => {
-        dispatch(fetchHeroes()); 
+    // добавляем - этого не было
+    const activeFilter = useSelector(state => state.filters.activeFilter);
+    const filteredHeroes = useMemo(() => { // когда компонент будет перерендериваться наши данные будут каждый раз фильтроваться при помощи этой функции -> поэтмоу используем useMemo
+        const filteredHeroes = heroes.slice(); // создаем копию массива с сервера, чтобы не мутировать данные 
+        if (activeFilter === 'all') {
+            return filteredHeroes;
+        } else {
+            return filteredHeroes.filter(item => item.element === activeFilter)
+        }
+    }, [heroes, activeFilter]);
 
-        // eslint-disable-next-line
-    }, []);
+    // const filteredHeroes = useSelector(filteredHeroesSelector);
+    // const heroesLoadingStatus = useSelector(state => state.heroes.heroesLoadingStatus);
+    // const dispatch = useDispatch();
+    // const {request} = useHttp();
+
+    // useEffect(() => {
+    //     dispatch(fetchHeroes()); 
+
+    //     // eslint-disable-next-line
+    // }, []);
 
     const onDelete = useCallback((id) => { 
-        request(`http://localhost:3001/heroes/${id}`, "DELETE")
-            .then(data => console.log(data, 'Deleted')) 
-            .then(dispatch(heroDeleted(id)))
-            .catch(err => console.log(err));
+        // request(`http://localhost:3001/heroes/${id}`, "DELETE")
+        //     .then(data => console.log(data, 'Deleted')) 
+        //     .then(dispatch(heroDeleted(id)))
+        //     .catch(err => console.log(err));
+        deleteHero(id);
         // eslint-disable-next-line  
-    }, [request]); 
+    }, []);  // [request]
 
-    if (heroesLoadingStatus === "loading") {
+    if (isLoading) { //(heroesLoadingStatus === "loading") {
         return <Spinner/>;
-    } else if (heroesLoadingStatus === "error") {
+    } else if (isError) { //(heroesLoadingStatus === "error") {
         return <h5 className="text-center mt-5">Ошибка загрузки</h5>
     }
 
